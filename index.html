@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+<title>Pace</title>
+<style>
+  :root {
+    --bg: #12331f;
+    --panel: #1c452b;
+    --ink: #f6f3e9;
+    --muted: #a9c2b1;
+    --hole: #2a5a3a;
+    --hole-on: #f6f3e9;
+    --ahead: #7fd18a;
+    --behind: #ff8c5a;
+    --late: #ff5b4a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none; }
+  body { padding: max(16px, env(safe-area-inset-top)) 16px 32px; max-width: 480px; margin: 0 auto; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  label { font-size: 17px; color: var(--muted); }
+  input[type=time] {
+    font: 600 28px/1 -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink); background: var(--panel); border: 0; border-radius: 12px;
+    padding: 10px 14px; min-width: 150px; text-align: right;
+    color-scheme: dark;
+  }
+  input[type=time]:focus { outline: 3px solid var(--ahead); }
+
+  .stepper { display: flex; align-items: center; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  .stepper button { width: 56px; height: 52px; border: 0; background: var(--hole); color: var(--ink);
+    font: 600 28px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .stepper span { min-width: 56px; text-align: center; font-size: 28px; font-weight: 600; }
+
+  .seg { display: flex; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  .seg button { width: 84px; height: 52px; border: 0; background: transparent; color: var(--muted);
+    font: 700 24px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .seg button.on { background: var(--ahead); color: var(--bg); }
+
+  .result {
+    margin: 20px 0 8px; padding: 22px 18px; border-radius: 16px; background: var(--panel);
+    text-align: center; min-height: 128px; display: flex; flex-direction: column; justify-content: center;
+  }
+  .result .big { font-size: 60px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+  .result .sub { margin-top: 10px; font-size: 17px; color: var(--muted); }
+  .result .finish { margin-top: 10px; font-size: 17px; color: var(--ink); }
+  .result .finish b { font-weight: 700; }
+  .result.ahead .big { color: var(--ahead); }
+  .result.behind .big { color: var(--behind); }
+  .result.late .big { color: var(--late); }
+
+  .hint { font-size: 15px; color: var(--muted); margin: 14px 2px 8px; }
+
+  .holes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .holes button {
+    height: 84px; padding: 0; overflow: hidden; border: 0; border-radius: 12px; background: var(--hole); color: var(--ink);
+    font: 700 22px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  }
+  .holes button small { font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .holes button .par { font-size: 10px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .holes button.on .par { color: #3d6b4a; }
+  .holes button.cp { background: #3a7a4d; box-shadow: inset 0 0 0 4px #ffd54a; }
+  .holes button.cp small, .holes button.cp .par { color: #fff3c4; }
+  .holes button.cp.on { box-shadow: inset 0 0 0 4px #ffd54a; }
+  .holes button.start { position: relative; background: #7a3a2a; }
+  .holes button.start::after { content: "START"; position: absolute; top: 0; left: 0; right: 0;
+    background: #ff8c5a; color: #12331f; font-size: 11px; font-weight: 800; letter-spacing: 1px;
+    line-height: 16px; text-align: center; }
+  .holes button.start small, .holes button.start .par { color: #ffd9c9; }
+  .holes button.start .par { margin-top: 12px; }
+  .holes button.start.on { background: var(--hole-on); }
+  .holes button.start.on small, .holes button.start.on .par { color: #3d6b4a; }
+  .holes button.on { background: var(--hole-on); color: var(--bg); }
+  .holes button.on small { color: #3d6b4a; }
+  .holes button:focus-visible { outline: 3px solid var(--ahead); }
+
+  .foot { margin-top: 18px; font-size: 14px; color: var(--muted); line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<div class="row">
+  <label for="tee">Tee time</label>
+  <input type="time" id="tee">
+</div>
+
+<div class="row" style="margin-top:12px">
+  <label>Start hole</label>
+  <div class="stepper">
+    <button type="button" id="startDown" aria-label="Previous">−</button>
+    <span id="startVal">1</span>
+    <button type="button" id="startUp" aria-label="Next">+</button>
+  </div>
+</div>
+
+<div class="row" style="margin-top:12px">
+  <label>Group</label>
+  <div class="seg">
+    <button type="button" id="grpA" class="on">A</button>
+    <button type="button" id="grpB">B</button>
+  </div>
+</div>
+
+<div class="result" id="result">
+  <div class="big">—</div>
+  <div class="sub">Set the tee time, then tap the hole the group just finished.</div>
+  <div class="finish" id="finish"></div>
+</div>
+
+<div class="hint">Hole just completed (outlined holes are checkpoints for this start)</div>
+<div class="holes" id="holes"></div>
+
+<div class="foot">
+  Checkpoints count from the start hole: 2nd hole played → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
+  Other holes are interpolated. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (14 min) added at every checkpoint. Behind = red, ahead = green, updates every 30 s.
+</div>
+
+<script>
+  const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
+  const PARS = [4,5,4,3,5,4,4,4,3, 4,3,4,5,4,4,5,3,4]; // holes 1–18
+
+  function expectedMinutes(hole) {
+    const exact = CHECKPOINTS.find(c => c[0] === hole);
+    if (exact) return exact[1];
+    let lower = [0, 0], upper = null;
+    for (const c of CHECKPOINTS) { if (c[0] < hole) lower = c; else if (!upper) upper = c; }
+    if (!upper) return lower[1];
+    return lower[1] + (hole - lower[0]) / (upper[0] - lower[0]) * (upper[1] - lower[1]);
+  }
+
+  function fmtClock(d) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  function fmtShort(d) {
+    const h = d.getHours() % 12 || 12;
+    return `${h}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  const teeInput = document.getElementById('tee');
+  const holesEl = document.getElementById('holes');
+  const resultEl = document.getElementById('result');
+  let selectedHole = null;
+  let startHole = 1;
+  let group = 'A';
+  // B group tees off once A has cleared the hole, so it runs one hole behind
+  // on the same schedule: 4:20 / 18 holes ≈ 14 min.
+  const B_OFFSET_MIN = 14;
+  function groupOffset() { return group === 'B' ? B_OFFSET_MIN : 0; }
+
+  document.getElementById('grpA').onclick = () => { group = 'A'; render(); };
+  document.getElementById('grpB').onclick = () => { group = 'B'; render(); };
+
+  // Position of a hole in the group's playing order (1–18) given the start hole.
+  function playOrder(hole) { return ((hole - startHole + 18) % 18) + 1; }
+  function ordinal(n) { return n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'); }
+
+  document.getElementById('startDown').onclick = () => { startHole = startHole === 1 ? 18 : startHole - 1; render(); };
+  document.getElementById('startUp').onclick   = () => { startHole = startHole === 18 ? 1 : startHole + 1; render(); };
+
+  // Default tee time to now, rounded down to 10 minutes.
+  (function () {
+    const n = new Date();
+    n.setMinutes(Math.floor(n.getMinutes() / 10) * 10);
+    teeInput.value = n.toTimeString().slice(0, 5);
+  })();
+
+  for (let h = 1; h <= 18; h++) {
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="par">par ${PARS[h-1]}</span>${h}<small data-h="${h}"></small>`;
+    b.onclick = () => { selectedHole = h; render(); };
+    holesEl.appendChild(b);
+  }
+
+  function teeDate() {
+    if (!teeInput.value) return null;
+    const [hh, mm] = teeInput.value.split(':').map(Number);
+    const d = new Date(); d.setHours(hh, mm, 0, 0);
+    // If tee time is later than now, assume it was yesterday's date? No — a ranger
+    // is checking groups already on the course; treat it as today.
+    return d;
+  }
+
+  function render() {
+    const tee = teeDate();
+    document.getElementById('startVal').textContent = startHole;
+    document.getElementById('grpA').classList.toggle('on', group === 'A');
+    document.getElementById('grpB').classList.toggle('on', group === 'B');
+    [...holesEl.children].forEach((b, i) => {
+      b.classList.toggle('on', i + 1 === selectedHole);
+      const small = b.querySelector('small');
+      small.textContent = tee ? fmtShort(new Date(tee.getTime() + (expectedMinutes(playOrder(i + 1)) + groupOffset()) * 60000)) : '';
+      b.classList.toggle('cp', CHECKPOINTS.some(c => c[0] === playOrder(i + 1)));
+      b.classList.toggle('start', i + 1 === startHole);
+    });
+
+    const big = resultEl.querySelector('.big');
+    const sub = resultEl.querySelector('.sub');
+    const finishEl = document.getElementById('finish');
+    resultEl.className = 'result';
+
+    const roundMin = CHECKPOINTS[CHECKPOINTS.length - 1][1] + groupOffset();
+    const schedFinish = tee ? new Date(tee.getTime() + roundMin * 60000) : null;
+    finishEl.innerHTML = tee ? `Should finish <b>${fmtClock(schedFinish)}</b>` : '';
+
+    if (!tee || !selectedHole) {
+      big.textContent = '—';
+      sub.textContent = tee ? 'Tap the hole the group just finished.' : 'Set the tee time first.';
+      return;
+    }
+
+    const expected = expectedMinutes(playOrder(selectedHole)) + groupOffset();
+    const actual = (Date.now() - tee.getTime()) / 60000;
+    const delta = Math.round(actual - expected);
+    const due = new Date(tee.getTime() + expected * 60000);
+
+    if (delta > 0) {
+      resultEl.classList.add(delta >= 15 ? 'late' : 'behind');
+      big.textContent = `${delta} min behind`;
+    } else if (delta < 0) {
+      resultEl.classList.add('ahead');
+      big.textContent = `${-delta} min ahead`;
+    } else {
+      resultEl.classList.add('ahead');
+      big.textContent = 'On pace';
+    }
+    const nth = startHole === 1 ? '' : ` (their ${ordinal(playOrder(selectedHole))})`;
+    const grp = group === 'B' ? ' · B group' : '';
+    sub.textContent = `Hole ${selectedHole}${nth} should have finished by ${fmtClock(due)} · tee ${fmtClock(tee)}${grp}`;
+    const projFinish = new Date(schedFinish.getTime() + delta * 60000);
+    finishEl.innerHTML = `Should finish <b>${fmtClock(schedFinish)}</b> · at this pace <b>${fmtClock(projFinish)}</b>`;
+  }
+
+  teeInput.addEventListener('input', render);
+  setInterval(render, 30000);
+  render();
+</script>
+</body>
+</html>
