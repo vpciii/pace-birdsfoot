@@ -71,6 +71,7 @@
   .holes button.cp { background: #3a7a4d; box-shadow: inset 0 0 0 4px #ffd54a; }
   .holes button.cp small, .holes button.cp .par { color: #fff3c4; }
   .holes button.cp.on { box-shadow: inset 0 0 0 4px #ffd54a; }
+  .holes button.cp.on .par { color: #3d6b4a; }
   .holes button.start { position: relative; background: #7a3a2a; }
   .holes button.start::after { content: "START"; position: absolute; top: 0; left: 0; right: 0;
     background: #ff8c5a; color: #12331f; font-size: 11px; font-weight: 800; letter-spacing: 1px;
@@ -84,6 +85,15 @@
   .holes button:focus-visible { outline: 3px solid var(--ahead); }
 
   .foot { margin-top: 18px; font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .settings { margin-top: 18px; background: var(--panel); border-radius: 12px; padding: 0 14px; }
+  .settings summary { padding: 14px 0; font-size: 15px; color: var(--muted); cursor: pointer; }
+  .settings .row { padding: 0 0 14px; }
+  .settings input {
+    width: 84px; font: 600 22px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; text-align: right;
+    color: var(--ink); background: var(--hole); border: 0; border-radius: 10px; padding: 8px 10px;
+    color-scheme: dark;
+  }
+  .settings input:focus { outline: 3px solid var(--ahead); }
   .ver { margin-top: 10px; font-size: 11px; color: var(--muted); opacity: 0.6; text-align: right; }
 </style>
 </head>
@@ -91,7 +101,7 @@
 
 <div class="row">
   <label for="tee">Tee time</label>
-  <input type="time" id="tee">
+  <input type="time" id="tee" autocomplete="off">
 </div>
 
 <div class="row" style="margin-top:12px">
@@ -122,21 +132,43 @@
 
 <div class="foot">
   Checkpoints count from the start hole: 2nd hole played → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
-  Other holes are interpolated. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (14 min) added at every checkpoint. Behind = orange (red at 15+ min), ahead = green; updates every 30 s.
+  Other holes are interpolated by par, so a par 5 gets more time than a par 3. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (<span id="bGapTxt">14</span> min) added at every checkpoint. Behind = orange (red at <span id="lateTxt">15</span>+ min), ahead = green; updates every 30 s.
 </div>
-<div class="ver">v1.1</div>
+<details class="settings">
+  <summary>Settings</summary>
+  <div class="row">
+    <label for="lateMin">Red when behind by (min)</label>
+    <input type="number" id="lateMin" min="1" max="60" inputmode="numeric">
+  </div>
+  <div class="row">
+    <label for="bGap">B group gap (min)</label>
+    <input type="number" id="bGap" min="0" max="30" inputmode="numeric">
+  </div>
+</details>
+
+<div class="ver">v1.2</div>
 
 <script>
   const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
   const PARS = [4,5,4,3,5,4,4,4,3, 4,3,4,5,4,4,5,3,4]; // holes 1–18
 
-  function expectedMinutes(hole) {
-    const exact = CHECKPOINTS.find(c => c[0] === hole);
+  // Relative time a hole takes by par, used to split the time between checkpoints.
+  const PAR_WEIGHT = { 3: 10, 4: 14, 5: 17 };
+
+  // Expected minutes from the tee to finishing the nth hole played (n = 1–18).
+  function expectedMinutes(n) {
+    const exact = CHECKPOINTS.find(c => c[0] === n);
     if (exact) return exact[1];
     let lower = [0, 0], upper = null;
-    for (const c of CHECKPOINTS) { if (c[0] < hole) lower = c; else if (!upper) upper = c; }
+    for (const c of CHECKPOINTS) { if (c[0] < n) lower = c; else if (!upper) upper = c; }
     if (!upper) return lower[1];
-    return lower[1] + (hole - lower[0]) / (upper[0] - lower[0]) * (upper[1] - lower[1]);
+    let done = 0, total = 0;
+    for (let k = lower[0] + 1; k <= upper[0]; k++) {
+      const w = PAR_WEIGHT[parOfPlayed(k)];
+      total += w;
+      if (k <= n) done += w;
+    }
+    return lower[1] + done / total * (upper[1] - lower[1]);
   }
 
   function fmtClock(d) {
@@ -154,15 +186,42 @@
   let startHole = 1;
   let group = 'A';
   // B group tees off once A has cleared the hole, so it runs one hole behind
-  // on the same schedule: 4:20 / 18 holes ≈ 14 min.
-  const B_OFFSET_MIN = 14;
-  function groupOffset() { return group === 'B' ? B_OFFSET_MIN : 0; }
+  // on the same schedule: 4:20 / 18 holes ≈ 14 min by default.
+  // Settings are kept on this phone indefinitely, unlike the daily check state.
+  const SETTINGS_KEY = 'pace-settings';
+  const DEFAULTS = { lateMin: 15, bGap: 14 };
+  const LIMITS = { lateMin: [1, 60], bGap: [0, 30] };
+  const settings = { ...DEFAULTS };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+    for (const k in DEFAULTS) {
+      const v = saved[k];
+      if (Number.isInteger(v) && v >= LIMITS[k][0] && v <= LIMITS[k][1]) settings[k] = v;
+    }
+  } catch (e) {}
+  function groupOffset() { return group === 'B' ? settings.bGap : 0; }
+
+  for (const k in DEFAULTS) {
+    const input = document.getElementById(k);
+    input.value = settings[k];
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      if (input.value === '' || !Number.isInteger(v) || v < LIMITS[k][0] || v > LIMITS[k][1]) return;
+      settings[k] = v;
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+      render();
+    });
+    // Put back the value in use if the field was left blank or out of range.
+    input.addEventListener('blur', () => { input.value = settings[k]; });
+  }
 
   document.getElementById('grpA').onclick = () => { group = 'A'; render(); };
   document.getElementById('grpB').onclick = () => { group = 'B'; render(); };
 
   // Position of a hole in the group's playing order (1–18) given the start hole.
   function playOrder(hole) { return ((hole - startHole + 18) % 18) + 1; }
+  // Par of the nth hole played (n = 1–18) given the start hole.
+  function parOfPlayed(n) { return PARS[(startHole - 1 + n - 1) % 18]; }
   function ordinal(n) { return n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'); }
 
   document.getElementById('startDown').onclick = () => { startHole = startHole === 1 ? 18 : startHole - 1; render(); };
@@ -187,9 +246,32 @@
   function setText(el, s) { if (el.textContent !== s) el.textContent = s; }
   function setHTML(el, s) { if (el.innerHTML !== s) el.innerHTML = s; }
 
+  // Keep the current check across reloads on this phone. Only today's state is restored,
+  // since the tee time is always treated as today.
+  const STORE_KEY = 'pace-state';
+  function saveState() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        day: new Date().toDateString(), tee: teeInput.value, startHole, group, selectedHole }));
+    } catch (e) {}
+  }
+  function loadState() {
+    try {
+      const st = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (!st || st.day !== new Date().toDateString()) return;
+      teeInput.value = st.tee || '';
+      if (st.startHole >= 1 && st.startHole <= 18) startHole = st.startHole;
+      group = st.group === 'B' ? 'B' : 'A';
+      if (st.selectedHole >= 1 && st.selectedHole <= 18) selectedHole = st.selectedHole;
+    } catch (e) {}
+  }
+
   function render() {
+    saveState();
     const tee = teeDate();
     document.getElementById('startVal').textContent = startHole;
+    setText(document.getElementById('bGapTxt'), String(settings.bGap));
+    setText(document.getElementById('lateTxt'), String(settings.lateMin));
     for (const g of ['A', 'B']) {
       const el = document.getElementById('grp' + g);
       el.classList.toggle('on', group === g);
@@ -231,7 +313,7 @@
     const due = new Date(tee.getTime() + expected * 60000);
 
     if (delta > 0) {
-      resultEl.classList.add(delta >= 15 ? 'late' : 'behind');
+      resultEl.classList.add(delta >= settings.lateMin ? 'late' : 'behind');
       setText(big, `${delta} min behind`);
     } else if (delta < 0) {
       resultEl.classList.add('ahead');
@@ -247,6 +329,7 @@
     setHTML(finishEl, `Should finish <b>${fmtClock(schedFinish)}</b> · at this pace <b>${fmtClock(projFinish)}</b>`);
   }
 
+  loadState();
   teeInput.addEventListener('input', render);
   setInterval(render, 30000);
   // Timers pause while the phone sleeps or the app is backgrounded; catch up on return.
