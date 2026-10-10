@@ -84,6 +84,7 @@
   .holes button:focus-visible { outline: 3px solid var(--ahead); }
 
   .foot { margin-top: 18px; font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .ver { margin-top: 10px; font-size: 11px; color: var(--muted); opacity: 0.6; text-align: right; }
 </style>
 </head>
 <body>
@@ -123,6 +124,7 @@
   Checkpoints count from the start hole: 2nd hole played → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
   Other holes are interpolated. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (14 min) added at every checkpoint. Behind = orange (red at 15+ min), ahead = green; updates every 30 s.
 </div>
+<div class="ver">v1.1</div>
 
 <script>
   const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
