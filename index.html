@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
@@ -65,8 +65,8 @@
     font: 700 22px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; cursor: pointer;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
   }
-  .holes button small { font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-  .holes button .par { font-size: 10px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .holes button small { font-size: 11px; font-weight: 500; color: #cfe0d4; white-space: nowrap; }
+  .holes button .par { font-size: 11px; font-weight: 500; color: #cfe0d4; white-space: nowrap; }
   .holes button.on .par { color: #3d6b4a; }
   .holes button.cp { background: #3a7a4d; box-shadow: inset 0 0 0 4px #ffd54a; }
   .holes button.cp small, .holes button.cp .par { color: #fff3c4; }
@@ -94,34 +94,34 @@
 </div>
 
 <div class="row" style="margin-top:12px">
-  <label>Start hole</label>
-  <div class="stepper">
-    <button type="button" id="startDown" aria-label="Previous">−</button>
-    <span id="startVal">1</span>
-    <button type="button" id="startUp" aria-label="Next">+</button>
+  <label id="startLbl">Start hole</label>
+  <div class="stepper" role="group" aria-labelledby="startLbl">
+    <button type="button" id="startDown" aria-label="Previous start hole">−</button>
+    <span id="startVal" aria-live="polite">1</span>
+    <button type="button" id="startUp" aria-label="Next start hole">+</button>
   </div>
 </div>
 
 <div class="row" style="margin-top:12px">
-  <label>Group</label>
-  <div class="seg">
-    <button type="button" id="grpA" class="on">A</button>
-    <button type="button" id="grpB">B</button>
+  <label id="grpLbl">Group</label>
+  <div class="seg" role="group" aria-labelledby="grpLbl">
+    <button type="button" id="grpA" class="on" aria-pressed="true">A</button>
+    <button type="button" id="grpB" aria-pressed="false">B</button>
   </div>
 </div>
 
-<div class="result" id="result">
+<div class="result" id="result" aria-live="polite">
   <div class="big">—</div>
   <div class="sub">Set the tee time, then tap the hole the group just finished.</div>
   <div class="finish" id="finish"></div>
 </div>
 
-<div class="hint">Hole just completed (outlined holes are checkpoints for this start)</div>
-<div class="holes" id="holes"></div>
+<div class="hint" id="holesHint">Hole just completed (outlined holes are checkpoints for this start)</div>
+<div class="holes" id="holes" role="group" aria-labelledby="holesHint"></div>
 
 <div class="foot">
   Checkpoints count from the start hole: 2nd hole played → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
-  Other holes are interpolated. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (14 min) added at every checkpoint. Behind = red, ahead = green, updates every 30 s.
+  Other holes are interpolated. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (14 min) added at every checkpoint. Behind = orange (red at 15+ min), ahead = green; updates every 30 s.
 </div>
 
 <script>
@@ -166,13 +166,6 @@
   document.getElementById('startDown').onclick = () => { startHole = startHole === 1 ? 18 : startHole - 1; render(); };
   document.getElementById('startUp').onclick   = () => { startHole = startHole === 18 ? 1 : startHole + 1; render(); };
 
-  // Default tee time to now, rounded down to 10 minutes.
-  (function () {
-    const n = new Date();
-    n.setMinutes(Math.floor(n.getMinutes() / 10) * 10);
-    teeInput.value = n.toTimeString().slice(0, 5);
-  })();
-
   for (let h = 1; h <= 18; h++) {
     const b = document.createElement('button');
     b.innerHTML = `<span class="par">par ${PARS[h-1]}</span>${h}<small data-h="${h}"></small>`;
@@ -184,20 +177,28 @@
     if (!teeInput.value) return null;
     const [hh, mm] = teeInput.value.split(':').map(Number);
     const d = new Date(); d.setHours(hh, mm, 0, 0);
-    // If tee time is later than now, assume it was yesterday's date? No — a ranger
-    // is checking groups already on the course; treat it as today.
+    // Always today; a tee time later than now means the group hasn't started.
     return d;
   }
+
+  // Only touch the DOM when text changes, so the live region doesn't re-announce every 30 s.
+  function setText(el, s) { if (el.textContent !== s) el.textContent = s; }
+  function setHTML(el, s) { if (el.innerHTML !== s) el.innerHTML = s; }
 
   function render() {
     const tee = teeDate();
     document.getElementById('startVal').textContent = startHole;
-    document.getElementById('grpA').classList.toggle('on', group === 'A');
-    document.getElementById('grpB').classList.toggle('on', group === 'B');
+    for (const g of ['A', 'B']) {
+      const el = document.getElementById('grp' + g);
+      el.classList.toggle('on', group === g);
+      el.setAttribute('aria-pressed', group === g);
+    }
     [...holesEl.children].forEach((b, i) => {
       b.classList.toggle('on', i + 1 === selectedHole);
-      const small = b.querySelector('small');
-      small.textContent = tee ? fmtShort(new Date(tee.getTime() + (expectedMinutes(playOrder(i + 1)) + groupOffset()) * 60000)) : '';
+      b.setAttribute('aria-pressed', i + 1 === selectedHole);
+      const dueAt = tee ? new Date(tee.getTime() + (expectedMinutes(playOrder(i + 1)) + groupOffset()) * 60000) : null;
+      b.querySelector('small').textContent = dueAt ? fmtShort(dueAt) : '';
+      b.setAttribute('aria-label', `Hole ${i + 1}, par ${PARS[i]}` + (dueAt ? `, due ${fmtClock(dueAt)}` : ''));
       b.classList.toggle('cp', CHECKPOINTS.some(c => c[0] === playOrder(i + 1)));
       b.classList.toggle('start', i + 1 === startHole);
     });
@@ -209,38 +210,46 @@
 
     const roundMin = CHECKPOINTS[CHECKPOINTS.length - 1][1] + groupOffset();
     const schedFinish = tee ? new Date(tee.getTime() + roundMin * 60000) : null;
-    finishEl.innerHTML = tee ? `Should finish <b>${fmtClock(schedFinish)}</b>` : '';
+    setHTML(finishEl, tee ? `Should finish <b>${fmtClock(schedFinish)}</b>` : '');
 
     if (!tee || !selectedHole) {
-      big.textContent = '—';
-      sub.textContent = tee ? 'Tap the hole the group just finished.' : 'Set the tee time first.';
+      setText(big, '—');
+      setText(sub, tee ? 'Tap the hole the group just finished.' : 'Set the tee time first.');
       return;
     }
 
     const expected = expectedMinutes(playOrder(selectedHole)) + groupOffset();
     const actual = (Date.now() - tee.getTime()) / 60000;
+    if (actual < 0) {
+      setText(big, 'Not teed off');
+      setText(sub, `Tee time ${fmtClock(tee)} hasn't arrived yet.`);
+      return;
+    }
     const delta = Math.round(actual - expected);
     const due = new Date(tee.getTime() + expected * 60000);
 
     if (delta > 0) {
       resultEl.classList.add(delta >= 15 ? 'late' : 'behind');
-      big.textContent = `${delta} min behind`;
+      setText(big, `${delta} min behind`);
     } else if (delta < 0) {
       resultEl.classList.add('ahead');
-      big.textContent = `${-delta} min ahead`;
+      setText(big, `${-delta} min ahead`);
     } else {
       resultEl.classList.add('ahead');
-      big.textContent = 'On pace';
+      setText(big, 'On pace');
     }
     const nth = startHole === 1 ? '' : ` (their ${ordinal(playOrder(selectedHole))})`;
     const grp = group === 'B' ? ' · B group' : '';
-    sub.textContent = `Hole ${selectedHole}${nth} should have finished by ${fmtClock(due)} · tee ${fmtClock(tee)}${grp}`;
+    setText(sub, `Hole ${selectedHole}${nth} should have finished by ${fmtClock(due)} · tee ${fmtClock(tee)}${grp}`);
     const projFinish = new Date(schedFinish.getTime() + delta * 60000);
-    finishEl.innerHTML = `Should finish <b>${fmtClock(schedFinish)}</b> · at this pace <b>${fmtClock(projFinish)}</b>`;
+    setHTML(finishEl, `Should finish <b>${fmtClock(schedFinish)}</b> · at this pace <b>${fmtClock(projFinish)}</b>`);
   }
 
   teeInput.addEventListener('input', render);
   setInterval(render, 30000);
+  // Timers pause while the phone sleeps or the app is backgrounded; catch up on return.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+  window.addEventListener('pageshow', render);
   render();
 </script>
 </body>
