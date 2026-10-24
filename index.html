@@ -26,7 +26,7 @@
   body { padding: max(16px, env(safe-area-inset-top)) 16px 32px; max-width: 480px; margin: 0 auto; }
 
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  label { font-size: 17px; color: var(--muted); }
+  label { font-size: 17px; color: var(--muted); white-space: nowrap; }
   input[type=time] {
     font: 600 28px/1 -apple-system, "Helvetica Neue", Arial, sans-serif;
     color: var(--ink); background: var(--panel); border: 0; border-radius: 12px;
@@ -94,22 +94,34 @@
     color-scheme: dark;
   }
   .settings input:focus { outline: 3px solid var(--ahead); }
-  .cartbox { display: flex; gap: 8px; }
-  #cart {
-    width: 110px; font: 600 28px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; text-align: right;
-    color: var(--ink); background: var(--panel); border: 0; border-radius: 12px; padding: 10px 14px;
+  .pair { display: flex; gap: 8px; }
+  .pair input[type=time] { min-width: 0; font-size: 26px; padding: 10px 12px; }
+  .duo { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .cap { font-size: 15px; color: var(--muted); }
+  .duo .stepper button { width: 48px; }
+  .duo .stepper span { min-width: 44px; }
+  .duo .seg button { width: 64px; }
+
+  .savebox { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--panel); }
+  .savebox h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--muted); }
+  .saverow { display: flex; gap: 8px; }
+  #cart, #note {
+    min-width: 0; color: var(--ink); background: var(--hole); border: 0; border-radius: 10px; padding: 12px;
+    font: 600 20px/1.1 -apple-system, "Helvetica Neue", Arial, sans-serif;
   }
-  #cart::placeholder { color: var(--muted); opacity: 0.5; }
-  #cart:focus { outline: 3px solid var(--ahead); }
+  #cart { width: 96px; flex: none; }
+  #note { flex: 1; font-weight: 500; font-size: 17px; }
+  #cart::placeholder, #note::placeholder { color: var(--muted); opacity: 0.7; font-weight: 500; font-size: 17px; }
+  #cart:focus, #note:focus { outline: 3px solid var(--ahead); }
+  .savebtn { width: 100%; height: 52px; margin-top: 10px; border: 0; border-radius: 12px;
+    background: var(--ahead); color: var(--bg); font: 700 19px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  .savebtn:disabled { background: var(--hole); color: var(--muted); }
+  .savebtn.saved:disabled { background: transparent; color: var(--ahead); box-shadow: inset 0 0 0 2px var(--hole); }
+  .savebtn:focus-visible { outline: 3px solid var(--hole-on); }
   .btn { height: 52px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--hole); color: var(--ink);
     font: 600 17px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; }
   .btn:focus-visible { outline: 3px solid var(--ahead); }
-  #note {
-    flex: 1; min-width: 0; max-width: 260px; font: 500 17px/1.2 -apple-system, "Helvetica Neue", Arial, sans-serif;
-    color: var(--ink); background: var(--panel); border: 0; border-radius: 12px; padding: 14px;
-  }
-  #note::placeholder { color: var(--muted); opacity: 0.6; }
-  #note:focus { outline: 3px solid var(--ahead); }
   .cartrow .note { display: block; margin-top: 2px; color: var(--ink); font-style: italic; overflow-wrap: anywhere; }
   .result .where { margin-top: 6px; font-size: 17px; color: var(--ink); }
 
@@ -135,38 +147,29 @@
 <body>
 
 <div class="row">
-  <label for="cart">Cart</label>
-  <div class="cartbox">
-    <input type="text" id="cart" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="—">
+  <label for="tee">Tee time</label>
+  <div class="pair">
+    <input type="time" id="tee" autocomplete="off">
     <button type="button" class="btn" id="newCheck">New</button>
   </div>
 </div>
 
-<div class="row" style="margin-top:12px">
-  <label for="tee">Tee time</label>
-  <input type="time" id="tee" autocomplete="off">
-</div>
-
-<div class="row" style="margin-top:12px">
-  <label id="startLbl">Start hole</label>
-  <div class="stepper" role="group" aria-labelledby="startLbl">
-    <button type="button" id="startDown" aria-label="Previous start hole">−</button>
-    <span id="startVal" aria-live="polite">1</span>
-    <button type="button" id="startUp" aria-label="Next start hole">+</button>
+<div class="duo">
+  <div class="field">
+    <span class="cap" id="startLbl">Start hole</span>
+    <div class="stepper" role="group" aria-labelledby="startLbl">
+      <button type="button" id="startDown" aria-label="Previous start hole">−</button>
+      <span id="startVal" aria-live="polite">1</span>
+      <button type="button" id="startUp" aria-label="Next start hole">+</button>
+    </div>
   </div>
-</div>
-
-<div class="row" style="margin-top:12px">
-  <label id="grpLbl">Group</label>
-  <div class="seg" role="group" aria-labelledby="grpLbl">
-    <button type="button" id="grpA" class="on" aria-pressed="true">A</button>
-    <button type="button" id="grpB" aria-pressed="false">B</button>
+  <div class="field">
+    <span class="cap" id="grpLbl">Group</span>
+    <div class="seg" role="group" aria-labelledby="grpLbl">
+      <button type="button" id="grpA" class="on" aria-pressed="true">A</button>
+      <button type="button" id="grpB" aria-pressed="false">B</button>
+    </div>
   </div>
-</div>
-
-<div class="row" style="margin-top:12px">
-  <label for="note">Note</label>
-  <input type="text" id="note" maxlength="60" autocomplete="off" placeholder="e.g. warned at 9">
 </div>
 
 <div class="result" id="result" aria-live="polite">
@@ -176,8 +179,17 @@
   <div class="finish" id="finish"></div>
 </div>
 
-<div class="hint" id="holesHint">Hole just completed (outlined holes are checkpoints for this start)</div>
+<div class="hint" id="holesHint">Tap the hole the group just finished · outlined = checkpoint</div>
 <div class="holes" id="holes" role="group" aria-labelledby="holesHint"></div>
+
+<section class="savebox" aria-labelledby="saveTitle">
+  <h2 id="saveTitle">Save as a cart</h2>
+  <div class="saverow">
+    <input type="text" id="cart" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Cart #" aria-label="Cart number">
+    <input type="text" id="note" maxlength="60" autocomplete="off" placeholder="Note (optional)" aria-label="Note">
+  </div>
+  <button type="button" class="savebtn" id="saveCart" disabled>Tap a hole first</button>
+</section>
 
 <section class="carts" id="carts" hidden>
   <div class="row">
@@ -188,10 +200,9 @@
 </section>
 
 <div class="foot">
-  Enter a cart number and tap a hole to save that cart (with its note, if any); tap a saved cart (or type its number) to bring it back.
-  Pace is measured at the moment you tap the hole. Saved carts are kept until you clear them or the day ends.
-  Checkpoints count from the start hole: 2nd hole played → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
-  Other holes are interpolated by par, so a par 5 gets more time than a par 3. For a shotgun, set Start hole to where the group teed off; B groups get one hole's pace (<span id="bGapTxt">14</span> min) added at every checkpoint. Behind = orange (red at <span id="lateTxt">15</span>+ min), ahead = green; updates every 30 s.
+  Checkpoints (holes played from the start): 2nd → 0:25 · 5th → 1:15 · 7th → 1:40 · 9th → 2:10 · 13th → 3:15 · 15th → 3:40 · 18th → 4:20.
+  Holes in between are split by par. B groups run <span id="bGapTxt">14</span> min behind A; red means <span id="lateTxt">15</span>+ min behind.
+  Saved carts stay on this phone until you clear them or the day ends.
 </div>
 <details class="settings">
   <summary>Settings</summary>
@@ -205,7 +216,7 @@
   </div>
 </details>
 
-<div class="ver">v1.3</div>
+<div class="ver">v1.4</div>
 
 <script>
   const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
@@ -357,8 +368,18 @@
     carts = carts.filter(x => x.cart !== c.cart).concat([c]);
     saveCarts();
   }
-  // Editing tee/start/group/note of a cart that's already saved keeps its record in step.
-  function updateIfSaved() { if (findCart(cartInput.value.trim())) upsertCart(); }
+  const FIELDS = ['tee', 'startHole', 'group', 'hole', 'markedAt', 'note'];
+  function sameCheck(a, b) { return FIELDS.every(f => (a[f] ?? '') === (b[f] ?? '')); }
+  // A check with a cart number that differs from what's saved for that cart.
+  function hasUnsaved() {
+    const c = current();
+    if (!c.cart || !c.tee || !c.hole) return false;
+    const saved = findCart(c.cart);
+    return !saved || !sameCheck(saved, c);
+  }
+  function okToLeave() {
+    return !hasUnsaved() || confirm(`Cart ${cartInput.value.trim()} isn't saved. Discard it?`);
+  }
 
   // ---------- controls
   for (const k in DEFAULTS) {
@@ -375,30 +396,26 @@
     input.addEventListener('blur', () => { input.value = settings[k]; });
   }
 
-  document.getElementById('grpA').onclick = () => { group = 'A'; updateIfSaved(); render(); };
-  document.getElementById('grpB').onclick = () => { group = 'B'; updateIfSaved(); render(); };
-  document.getElementById('startDown').onclick = () => { startHole = startHole === 1 ? 18 : startHole - 1; updateIfSaved(); render(); };
-  document.getElementById('startUp').onclick   = () => { startHole = startHole === 18 ? 1 : startHole + 1; updateIfSaved(); render(); };
-  teeInput.addEventListener('input', () => { updateIfSaved(); render(); });
-  noteInput.addEventListener('input', () => { updateIfSaved(); render(); });
+  document.getElementById('grpA').onclick = () => { group = 'A'; render(); };
+  document.getElementById('grpB').onclick = () => { group = 'B'; render(); };
+  document.getElementById('startDown').onclick = () => { startHole = startHole === 1 ? 18 : startHole - 1; render(); };
+  document.getElementById('startUp').onclick   = () => { startHole = startHole === 18 ? 1 : startHole + 1; render(); };
+  teeInput.addEventListener('input', render);
+  noteInput.addEventListener('input', render);
   noteInput.addEventListener('keydown', e => { if (e.key === 'Enter') noteInput.blur(); });
 
-  // Typing a cart number that's already saved brings that cart back.
   cartInput.addEventListener('input', () => {
     cartInput.value = cartInput.value.replace(/[^0-9A-Za-z-]/g, '');
     render();
   });
-  cartInput.addEventListener('change', () => {
-    const saved = findCart(cartInput.value.trim());
-    if (saved) applyCheck(saved);
-    render();
-  });
   cartInput.addEventListener('keydown', e => { if (e.key === 'Enter') cartInput.blur(); });
 
+  document.getElementById('saveCart').onclick = () => { upsertCart(); render(); };
   document.getElementById('newCheck').onclick = () => {
+    if (!okToLeave()) return;
     applyCheck({ cart: '', tee: '', startHole: 1, group: 'A', hole: null, markedAt: null, note: '' });
     render();
-    cartInput.focus();
+    teeInput.focus();
   };
   document.getElementById('clearCarts').onclick = () => {
     if (!confirm('Clear all saved carts?')) return;
@@ -410,7 +427,7 @@
   for (let h = 1; h <= 18; h++) {
     const b = document.createElement('button');
     b.innerHTML = `<span class="par">par ${PARS[h-1]}</span>${h}<small></small>`;
-    b.onclick = () => { selectedHole = h; markedAt = Date.now(); upsertCart(); render(); };
+    b.onclick = () => { selectedHole = h; markedAt = Date.now(); render(); };
     holesEl.appendChild(b);
   }
 
@@ -447,7 +464,7 @@
         row.setAttribute('aria-label', (row.getAttribute('aria-label') || `Cart ${c.cart}`) + `. Note: ${c.note}`);
       }
       row.append(no, info, pace);
-      row.onclick = () => { applyCheck(c); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      row.onclick = () => { if (!okToLeave()) return; applyCheck(c); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'cartdel';
@@ -457,6 +474,20 @@
       li.append(row, del);
       return li;
     }));
+  }
+
+  function renderSave(cur) {
+    const btn = document.getElementById('saveCart');
+    const saved = cur.cart ? findCart(cur.cart) : null;
+    let text, enabled = false, done = false;
+    if (!cur.tee || !cur.hole) text = 'Tap a hole first';
+    else if (!cur.cart) text = 'Enter a cart # to save';
+    else if (!saved) { text = `Save cart ${cur.cart}`; enabled = true; }
+    else if (sameCheck(saved, cur)) { text = `✓ Cart ${cur.cart} saved`; done = true; }
+    else { text = `Update cart ${cur.cart}`; enabled = true; }
+    setText(btn, text);
+    btn.disabled = !enabled;
+    btn.classList.toggle('saved', done);
   }
 
   function render() {
@@ -483,6 +514,7 @@
       b.classList.toggle('start', i + 1 === startHole);
     });
     renderCarts();
+    renderSave(cur);
 
     const big = resultEl.querySelector('.big');
     const sub = resultEl.querySelector('.sub');
@@ -497,9 +529,7 @@
 
     if (!ev) {
       setText(big, '—');
-      setText(sub, !tee ? 'Set the tee time first.' :
-        cur.cart && !findCart(cur.cart) ? `Tap the hole cart ${cur.cart} just finished to save it.` :
-        'Tap the hole the group just finished.');
+      setText(sub, !tee ? 'Set the tee time first.' : 'Tap the hole the group just finished.');
       return;
     }
     if (ev.notStarted) {
