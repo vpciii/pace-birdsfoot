@@ -142,7 +142,14 @@
   .pace.ahead { color: var(--ahead); } .pace.behind { color: var(--behind); } .pace.late { color: var(--late); }
   .cartdel { width: 48px; border: 0; background: var(--hole); color: var(--muted); font: 400 24px/1 -apple-system, sans-serif; }
   .cartrow:focus-visible, .cartdel:focus-visible { outline: 3px solid var(--ahead); outline-offset: -3px; }
-  .ver { margin-top: 10px; font-size: 11px; color: var(--muted); opacity: 0.6; text-align: right; }
+  .ver { margin-top: 6px; }
+  .ver summary { list-style: none; padding: 10px 0; font-size: 13px; color: var(--muted); text-align: right; cursor: pointer; }
+  .ver summary::-webkit-details-marker { display: none; }
+  .ver summary:focus-visible { outline: 3px solid var(--ahead); }
+  .changes { background: var(--panel); border-radius: 12px; padding: 4px 14px 12px; font-size: 15px; line-height: 1.4; }
+  .changes h3 { margin: 10px 0 4px; font-size: 15px; font-weight: 700; }
+  .changes ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .changes li { margin: 2px 0; }
 </style>
 </head>
 <body>
@@ -217,9 +224,40 @@
   </div>
 </details>
 
-<div class="ver">v1.6</div>
+<details class="ver">
+  <summary id="verLbl"></summary>
+  <div class="changes" id="changes"></div>
+</details>
 
 <script>
+  // Newest first. The first entry is the version shown on the page.
+  const CHANGES = [
+    ['1.7', ['Tap the version at the bottom to see what’s changed.']],
+    ['1.6', ['Saved carts say "6 min behind", "4 min ahead" or "On pace" instead of +6 / −4 / 0.']],
+    ['1.5', [
+      'Clear all and × also clear the screen when they remove the cart that’s on it.',
+      'Asks before saving over a cart number that’s saved with a different tee time.',
+      'Cart numbers are digits only.',
+      'Saved carts stay until you clear them, instead of clearing overnight.',
+    ]],
+    ['1.4', [
+      'Tee time, start hole and group fit on fewer lines.',
+      'Cart number and note moved to a Save cart box; carts save only when you press Save.',
+      'Asks before discarding a cart that isn’t saved.',
+    ]],
+    ['1.3', [
+      'Save carts with an optional note.',
+      'Saved carts list each cart’s pace and the hole it’s likely on now.',
+    ]],
+  ];
+  document.getElementById('verLbl').textContent = `v${CHANGES[0][0]} · What’s new`;
+  document.getElementById('changes').replaceChildren(...CHANGES.flatMap(([v, items]) => {
+    const h = document.createElement('h3'); h.textContent = `v${v}`;
+    const ul = document.createElement('ul');
+    ul.append(...items.map(t => { const li = document.createElement('li'); li.textContent = t; return li; }));
+    return [h, ul];
+  }));
+
   const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
   const PARS = [4,5,4,3,5,4,4,4,3, 4,3,4,5,4,4,5,3,4]; // holes 1–18
 
