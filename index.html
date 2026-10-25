@@ -137,7 +137,8 @@
   .cartrow .no { min-width: 48px; font-size: 26px; font-weight: 700; }
   .cartrow .info { flex: 1; color: var(--muted); }
   .cartrow .info b { color: var(--ink); font-weight: 600; }
-  .cartrow .pace { font-size: 20px; font-weight: 700; white-space: nowrap; }
+  .cartrow .pace { font-size: 20px; font-weight: 700; line-height: 1.1; text-align: right; white-space: nowrap; }
+  .cartrow .pace small { display: block; font-size: 14px; font-weight: 600; }
   .pace.ahead { color: var(--ahead); } .pace.behind { color: var(--behind); } .pace.late { color: var(--late); }
   .cartdel { width: 48px; border: 0; background: var(--hole); color: var(--muted); font: 400 24px/1 -apple-system, sans-serif; }
   .cartrow:focus-visible, .cartdel:focus-visible { outline: 3px solid var(--ahead); outline-offset: -3px; }
@@ -216,7 +217,7 @@
   </div>
 </details>
 
-<div class="ver">v1.5</div>
+<div class="ver">v1.6</div>
 
 <script>
   const CHECKPOINTS = [[2,25],[5,75],[7,100],[9,130],[13,195],[15,220],[18,260]];
@@ -304,6 +305,7 @@
       schedFinish: new Date(tee.getTime() + (CHECKPOINTS[CHECKPOINTS.length - 1][1] + off) * 60000),
     };
   }
+  function paceText(delta) { return delta > 0 ? `${delta} min behind` : delta < 0 ? `${-delta} min ahead` : 'On pace'; }
   function paceClass(delta) { return delta > 0 ? (delta >= settings.lateMin ? 'late' : 'behind') : 'ahead'; }
 
   const cartInput = document.getElementById('cart');
@@ -470,10 +472,15 @@
       if (ev && !ev.notStarted) {
         info.innerHTML = `Hole <b>${c.hole}</b> at ${fmtShort(ev.markedAt)}<br>` +
           (ev.nowHole ? `Likely on <b>${ev.nowHole}</b> now` : 'Likely finished');
-        pace.textContent = ev.delta > 0 ? `+${ev.delta}` : ev.delta < 0 ? `−${-ev.delta}` : '0';
+        // Same words as the main reading, split over two lines to fit the row.
+        if (ev.delta === 0) pace.textContent = 'On pace';
+        else {
+          const word = document.createElement('small'); word.textContent = ev.delta > 0 ? 'behind' : 'ahead';
+          pace.append(`${Math.abs(ev.delta)} min`, word);
+        }
         pace.classList.add(paceClass(ev.delta));
         row.setAttribute('aria-label', `Cart ${c.cart}, hole ${c.hole} at ${fmtClock(ev.markedAt)}, ` +
-          (ev.delta > 0 ? `${ev.delta} min behind` : ev.delta < 0 ? `${-ev.delta} min ahead` : 'on pace') +
+          paceText(ev.delta).toLowerCase() +
           (ev.nowHole ? `, likely on hole ${ev.nowHole} now` : ', likely finished'));
       } else {
         info.textContent = `Hole ${c.hole}`;
@@ -563,7 +570,7 @@
     }
 
     resultEl.classList.add(paceClass(ev.delta));
-    setText(big, ev.delta > 0 ? `${ev.delta} min behind` : ev.delta < 0 ? `${-ev.delta} min ahead` : 'On pace');
+    setText(big, paceText(ev.delta));
     const who = cur.cart ? `Cart ${cur.cart} · ` : '';
     const nth = startHole === 1 ? '' : ` (their ${ordinal(ev.order)})`;
     const grp = group === 'B' ? ' · B group' : '';
